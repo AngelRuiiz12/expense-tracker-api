@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, status
 
 import app.crud.category as category_crud
+import app.crud.expense as expense_crud
 from app.api.deps import DbSession
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
@@ -64,6 +65,14 @@ def remove_category(category_id: int, db: DbSession) -> None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"La categoría {category_id} no existe",
+        )
+
+    has_expenses = expense_crud.category_has_expenses(db, category_id)
+
+    if has_expenses:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"La categoría {category_id} aun tiene gastos asociados",
         )
 
     category_crud.delete_category(db, category)
