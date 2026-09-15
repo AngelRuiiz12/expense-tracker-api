@@ -5,29 +5,39 @@ from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate
 
 
-def get_category_by_name(db: Session, category_name: str) -> Category | None:
-    stmt = select(Category).where(Category.name == category_name)
-    category = db.execute(stmt).scalar_one_or_none()
+def get_category(db: Session, category_id: int, user_id: int) -> Category | None:
+    stmt = select(Category).where(
+        Category.id == category_id, Category.user_id == user_id
+    )
 
-    return category
-
-
-def get_category(db: Session, category_id: int) -> Category | None:
-    stmt = select(Category).where(Category.id == category_id)
-    category = db.execute(stmt).scalar_one_or_none()
-
-    return category
+    return db.execute(stmt).scalar_one_or_none()
 
 
-def get_categories(db: Session, skip: int = 0, limit: int = 10) -> list[Category]:
-    stmt = select(Category).offset(skip).limit(limit)
-    categories = db.execute(stmt).scalars().all()
+def get_category_by_name(
+    db: Session, category_name: str, user_id: int
+) -> Category | None:
+    stmt = select(Category).where(
+        Category.name == category_name, Category.user_id == user_id
+    )
+    return db.execute(stmt).scalar_one_or_none()
 
-    return list(categories)
+
+def get_categories(
+    db: Session, user_id: int, skip: int = 0, limit: int = 10
+) -> list[Category]:
+    stmt = (
+        select(Category)
+        .where(Category.user_id == user_id)
+        .order_by(Category.name)
+        .offset(skip)
+        .limit(limit)
+    )
+
+    return list(db.execute(stmt).scalars().all())
 
 
-def create_category(db: Session, data: CategoryCreate) -> Category:
-    new_category = Category(**data.model_dump())
+def create_category(db: Session, data: CategoryCreate, user_id: int) -> Category:
+    new_category = Category(**data.model_dump(), user_id=user_id)
 
     db.add(new_category)
     db.commit()

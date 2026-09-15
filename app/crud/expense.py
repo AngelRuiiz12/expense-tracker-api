@@ -5,28 +5,33 @@ from app.models.expense import Expense
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate
 
 
-def get_expense(db: Session, expense_id: int) -> Expense | None:
+def get_expense(db: Session, expense_id: int, user_id: int) -> Expense | None:
     stmt = (
         select(Expense)
-        .where(Expense.id == expense_id)
+        .where(Expense.id == expense_id, Expense.user_id == user_id)
         .options(selectinload(Expense.category))
     )
+
     return db.execute(stmt).scalar_one_or_none()
 
 
-def get_expenses(db: Session, skip: int = 0, limit: int = 10) -> list[Expense]:
+def get_expenses(
+    db: Session, user_id: int, skip: int = 0, limit: int = 10
+) -> list[Expense]:
     stmt = (
         select(Expense)
+        .where(Expense.user_id == user_id)
+        .order_by(Expense.spent_on.desc(), Expense.id.desc())
         .offset(skip)
         .limit(limit)
-        .order_by(Expense.spent_on.desc(), Expense.id.desc())
         .options(selectinload(Expense.category))
     )
+
     return list(db.execute(stmt).scalars().all())
 
 
-def create_expense(db: Session, data: ExpenseCreate) -> Expense:
-    expense = Expense(**data.model_dump())
+def create_expense(db: Session, data: ExpenseCreate, user_id: int) -> Expense:
+    expense = Expense(**data.model_dump(), user_id=user_id)
 
     db.add(expense)
     db.commit()
@@ -53,8 +58,9 @@ def delete_expense(db: Session, expense: Expense) -> None:
     db.commit()
 
 
-def category_has_expenses(db: Session, category_id: int) -> bool:
-    stmt = select(exists().where(Expense.category_id == category_id))
-    result = db.execute(stmt).scalar()
+def category_has_expenses(db: Session, category_id: int, user_id: int) -> bool:
+    stmt = select(
+        exists().where(Expense.category_id == category_id, Expense.user_id == user_id)
+    )
 
-    return bool(result)
+    return bool(db.execute(stmt).scalar())
