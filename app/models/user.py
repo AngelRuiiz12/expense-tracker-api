@@ -9,6 +9,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.category import Category
     from app.models.expense import Expense
+    from app.models.refresh_token import RefreshToken
 
 
 class User(Base):
@@ -21,3 +22,5 @@ class User(Base):
 
     categories: Mapped[list["Category"]] = relationship(back_populates="user")
     expenses: Mapped[list["Expense"]] = relationship(back_populates="user")
+
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user")

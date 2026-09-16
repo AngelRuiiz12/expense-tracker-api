@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -33,3 +35,15 @@ def decode_access_token(token: str) -> str | None:
         return None
 
     return payload.get("sub")
+
+
+def create_refresh_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def hash_refresh_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def refresh_token_expiry() -> datetime:
+    return datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)

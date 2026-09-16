@@ -46,6 +46,7 @@ jobs:
       TEST_DATABASE_URL: postgresql+psycopg://expense:expense@localhost:5432/expense_tracker_test
       SECRET_KEY: clave-solo-para-ci-no-usar-en-produccion
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 30
 
     steps:
       - uses: actions/checkout@v5
