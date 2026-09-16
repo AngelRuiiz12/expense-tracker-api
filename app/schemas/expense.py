@@ -30,3 +30,24 @@ class ExpenseRead(ExpenseBase):
     id: int
     created_at: datetime
     category: CategoryRead
+
+
+class ExpenseList(BaseModel):
+    items: list[ExpenseRead]
+    total: int
+    skip: int
+    limit: int
+
+
+class CategorySummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    category_id: int
+    category_name: str
+    total: Decimal
+    count: int
+
+
+class ExpenseSummary(BaseModel):
+    total: Decimal
+    by_category: list[CategorySummary]

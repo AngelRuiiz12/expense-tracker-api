@@ -1,22 +1,66 @@
+from datetime import date
+from decimal import Decimal
+
 from fastapi import APIRouter, HTTPException, Query, status
 
 import app.crud.category as category_crud
 import app.crud.expense as expense_crud
 from app.api.deps import CurrentUser, DbSession
 from app.models.expense import Expense
-from app.schemas.expense import ExpenseCreate, ExpenseRead, ExpenseUpdate
+from app.schemas.expense import (
+    CategorySummary,
+    ExpenseCreate,
+    ExpenseList,
+    ExpenseRead,
+    ExpenseSummary,
+    ExpenseUpdate,
+)
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[ExpenseRead])
+def _check_date_range(spent_from: date | None, spent_to: date | None) -> None:
+    if spent_from is not None and spent_to is not None and spent_from > spent_to:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="spent_from no puede ser posterior a spent_to",
+        )
+
+
+@router.get("/", response_model=ExpenseList)
 def list_expenses(
     db: DbSession,
     user: CurrentUser,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=10, ge=1, le=100),
-) -> list[Expense]:
-    return expense_crud.get_expenses(db, user.id, skip, limit)
+    category_id: int | None = Query(default=None),
+    spent_from: date | None = Query(default=None),
+    spent_to: date | None = Query(default=None),
+) -> ExpenseList:
+    _check_date_range(spent_from, spent_to)
+
+    items = expense_crud.get_expenses(
+        db, user.id, skip, limit, category_id, spent_from, spent_to
+    )
+    total = expense_crud.count_expenses(db, user.id, category_id, spent_from, spent_to)
+
+    return ExpenseList(items=items, total=total, skip=skip, limit=limit)
+
+
+@router.get("/summary", response_model=ExpenseSummary)
+def expenses_summary(
+    db: DbSession,
+    user: CurrentUser,
+    spent_from: date | None = Query(default=None),
+    spent_to: date | None = Query(default=None),
+) -> ExpenseSummary:
+    _check_date_range(spent_from, spent_to)
+
+    rows = expense_crud.summarize_by_category(db, user.id, spent_from, spent_to)
+    by_category = [CategorySummary.model_validate(row) for row in rows]
+    total = sum((group.total for group in by_category), Decimal("0"))
+
+    return ExpenseSummary(total=total, by_category=by_category)
 
 
 @router.post("/", response_model=ExpenseRead, status_code=status.HTTP_201_CREATED)

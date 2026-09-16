@@ -1,8 +1,32 @@
-from sqlalchemy import exists, select
+from collections.abc import Sequence
+from datetime import date
+
+from sqlalchemy import ColumnElement, Row, exists, func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.models.category import Category
 from app.models.expense import Expense
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate
+
+
+def _expense_filters(
+    user_id: int,
+    category_id: int | None = None,
+    spent_from: date | None = None,
+    spent_to: date | None = None,
+) -> list[ColumnElement[bool]]:
+    conditions: list[ColumnElement[bool]] = [Expense.user_id == user_id]
+
+    if category_id is not None:
+        conditions.append(Expense.category_id == category_id)
+
+    if spent_from is not None:
+        conditions.append(Expense.spent_on >= spent_from)
+
+    if spent_to is not None:
+        conditions.append(Expense.spent_on <= spent_to)
+
+    return conditions
 
 
 def get_expense(db: Session, expense_id: int, user_id: int) -> Expense | None:
@@ -16,11 +40,17 @@ def get_expense(db: Session, expense_id: int, user_id: int) -> Expense | None:
 
 
 def get_expenses(
-    db: Session, user_id: int, skip: int = 0, limit: int = 10
+    db: Session,
+    user_id: int,
+    skip: int = 0,
+    limit: int = 10,
+    category_id: int | None = None,
+    spent_from: date | None = None,
+    spent_to: date | None = None,
 ) -> list[Expense]:
     stmt = (
         select(Expense)
-        .where(Expense.user_id == user_id)
+        .where(*_expense_filters(user_id, category_id, spent_from, spent_to))
         .order_by(Expense.spent_on.desc(), Expense.id.desc())
         .offset(skip)
         .limit(limit)
@@ -28,6 +58,45 @@ def get_expenses(
     )
 
     return list(db.execute(stmt).scalars().all())
+
+
+def count_expenses(
+    db: Session,
+    user_id: int,
+    category_id: int | None = None,
+    spent_from: date | None = None,
+    spent_to: date | None = None,
+) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(Expense)
+        .where(*_expense_filters(user_id, category_id, spent_from, spent_to))
+    )
+
+    return db.execute(stmt).scalar_one()
+
+
+def summarize_by_category(
+    db: Session,
+    user_id: int,
+    spent_from: date | None = None,
+    spent_to: date | None = None,
+) -> Sequence[Row[tuple[int, str, float, int]]]:
+    stmt = (
+        select(
+            Category.id.label("category_id"),
+            Category.name.label("category_name"),
+            func.sum(Expense.amount).label("total"),
+            func.count(Expense.id).label("count"),
+        )
+        .select_from(Expense)
+        .join(Expense.category)
+        .where(*_expense_filters(user_id, spent_from=spent_from, spent_to=spent_to))
+        .group_by(Category.id, Category.name)
+        .order_by(func.sum(Expense.amount).desc())
+    )
+
+    return db.execute(stmt).all()
 
 
 def create_expense(db: Session, data: ExpenseCreate, user_id: int) -> Expense:
