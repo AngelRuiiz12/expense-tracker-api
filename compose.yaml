@@ -18,5 +18,28 @@ services:
       timeout: 5s
       retries: 10
 
+  migrate:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://expense:expense@db:5432/expense_tracker
+    command: ["alembic", "upgrade", "head"]
+
+  api:
+    build: .
+    container_name: expense-tracker-api
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://expense:expense@db:5432/expense_tracker
+    ports:
+      - "8000:8000"
+
 volumes:
   pgdata:
