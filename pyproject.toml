@@ -1,8 +1,10 @@
 [project]
 name = "expense-tracker-api"
 version = "0.1.0"
-description = "Proyecto de práctica para FastAPI y SQLAlchemy 2.0"
+description = "API REST de control de gastos personales con FastAPI, PostgreSQL y autenticación JWT"
 readme = "README.md"
+license = "MIT"
+authors = [{ name = "Ángel Ruiz", email = "angel.rs99@hotmail.com" }]
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.0",
