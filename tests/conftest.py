@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-import app.models  # noqa: F401
+import app.models
 from app.api.deps import get_db
 from app.core.config import settings
 from app.db.base import Base

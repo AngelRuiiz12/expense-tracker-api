@@ -38,7 +38,7 @@ def get_current_user(
     try:
         user_id = int(subject)
     except ValueError:
-        raise credentials_error
+        raise credentials_error from None
 
     user = user_crud.get_user(db, user_id)
 
