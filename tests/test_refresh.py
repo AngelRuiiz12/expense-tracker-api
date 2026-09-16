@@ -8,6 +8,7 @@ REGISTER = "/api/v1/auth/register"
 LOGIN = "/api/v1/auth/login"
 REFRESH = "/api/v1/auth/refresh"
 LOGOUT = "/api/v1/auth/logout"
+LOGOUT_ALL = "/api/v1/auth/logout-all"
 CREDENTIALS = {"email": "ana@test.com", "password": "secreta123"}
 FORM = {"username": "ana@test.com", "password": "secreta123"}
 
@@ -102,3 +103,28 @@ def test_el_refresh_token_no_se_guarda_en_claro(
 
     assert guardado.token_hash != inicial["refresh_token"]
     assert len(guardado.token_hash) == 64
+
+
+def test_logout_all_cierra_todas_las_sesiones(client: TestClient) -> None:
+    movil = _login(client)
+    portatil = client.post(LOGIN, data=FORM).json()
+
+    salida = client.post(
+        LOGOUT_ALL, headers={"Authorization": f"Bearer {movil['access_token']}"}
+    )
+    desde_movil = client.post(REFRESH, json={"refresh_token": movil["refresh_token"]})
+    desde_portatil = client.post(
+        REFRESH, json={"refresh_token": portatil["refresh_token"]}
+    )
+
+    assert salida.status_code == 204
+    assert desde_movil.status_code == 401
+    assert desde_portatil.status_code == 401
+
+
+def test_logout_all_exige_estar_autenticado(client: TestClient) -> None:
+    _login(client)
+
+    response = client.post(LOGOUT_ALL)
+
+    assert response.status_code == 401

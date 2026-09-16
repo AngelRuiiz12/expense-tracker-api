@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 import app.crud.refresh_token as refresh_crud
 import app.crud.user as user_crud
-from app.api.deps import DbSession
+from app.api.deps import CurrentUser, DbSession
 from app.core.security import create_access_token, verify_password
 from app.models.user import User
 from app.schemas.token import RefreshRequest, Token
@@ -86,3 +86,8 @@ def logout(db: DbSession, data: RefreshRequest) -> None:
 
     if stored is not None and stored.revoked_at is None:
         refresh_crud.revoke(db, stored)
+
+
+@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+def logout_all(db: DbSession, user: CurrentUser) -> None:
+    refresh_crud.revoke_all_for_user(db, user.id)
