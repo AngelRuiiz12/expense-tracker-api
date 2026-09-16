@@ -4,19 +4,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401
 from app.api.deps import get_db
+from app.core.config import settings
 from app.db.base import Base
 from app.main import app
 
 
 @pytest.fixture
 def db() -> Iterator[Session]:
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
+    engine = create_engine(settings.test_database_url)
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
     with Session(engine) as session:
