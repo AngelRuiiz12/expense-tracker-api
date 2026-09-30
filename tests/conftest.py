@@ -64,3 +64,12 @@ def category_id(client: TestClient, auth_headers: dict[str, str]) -> int:
     )
 
     return response.json()["id"]
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    from app.core.rate_limiter import _rate_limit_store
+
+    _rate_limit_store.clear()
+    yield
+    _rate_limit_store.clear()
