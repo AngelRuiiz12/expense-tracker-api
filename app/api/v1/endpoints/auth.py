@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 import app.crud.refresh_token as refresh_crud
 import app.crud.user as user_crud
 from app.api.deps import CurrentUser, DbSession
+from app.core.rate_limiter import LoginRateLimit
 from app.core.security import create_access_token, verify_password
 from app.models.user import User
 from app.schemas.token import RefreshRequest, Token
@@ -37,7 +38,9 @@ def register(db: DbSession, data: UserCreate) -> User:
 
 @router.post("/login", response_model=Token)
 def login(
-    db: DbSession, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    db: DbSession,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    _: LoginRateLimit,
 ) -> Token:
     user = user_crud.get_user_by_email(db, form_data.username)
 
