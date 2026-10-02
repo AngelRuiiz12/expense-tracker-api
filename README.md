@@ -25,7 +25,10 @@ en contenedores.
 - **Importes con `Decimal`** y columnas `NUMERIC(10,2)`: sin errores de redondeo.
 - **Filtros, paginación con total** y endpoint de resumen agregado por categoría.
 - **Migraciones versionadas** con Alembic.
-- **39 tests de integración** contra PostgreSQL real.
+- **Rate limiting en `/auth/login`**: 5 intentos por minuto y por IP, con `429` y cabecera `Retry-After`.
+- **Limpieza periódica**: una tarea horaria borra los refresh tokens caducados.
+- **CORS** configurado para el desarrollo de un frontend local.
+- **45 tests de integración** contra PostgreSQL real.
 - **CI en GitHub Actions**: linter, tests y build de la imagen Docker.
 
 ## Stack
@@ -44,6 +47,7 @@ en contenedores.
 | Calidad | Ruff (linter + formateador) |
 | Entorno | uv |
 | Contenedores | Docker + Docker Compose |
+| Tareas periódicas | APScheduler |
 | CI | GitHub Actions |
 
 ---
@@ -201,6 +205,8 @@ app/
 ├── main.py                 # instancia de FastAPI y montaje de routers
 ├── core/
 │   ├── config.py           # configuración leída del entorno
+│   ├── rate_limiter.py     # límite de intentos en el login
+│   ├── scheduler.py        # tarea periódica de limpieza de tokens
 │   └── security.py         # hashing, JWT y generación de tokens
 ├── db/
 │   ├── base.py             # Base declarativa y convención de nombres
@@ -244,7 +250,7 @@ renombrados de columna y los interpreta como borrar y crear.
 
 ### Tests
 
-Los 39 tests se ejecutan contra una base de datos PostgreSQL real
+Los 45 tests se ejecutan contra una base de datos PostgreSQL real
 (`expense_tracker_test`), no contra SQLite en memoria, para que ejerciten el
 mismo motor que usa la aplicación: claves ajenas, tipos estrictos y `GROUP BY`
 estricto.
@@ -262,6 +268,13 @@ falta, el código no llega a ejecutarse. Un recurso ajeno devuelve `404` y no
 todos modos para poder revocarlo, un JWT no aportaría nada y sí añadiría
 superficie de ataque. Es una cadena aleatoria opaca de 256 bits.
 
+**La limpieza solo borra tokens caducados, nunca los revocados aún vigentes.**
+La detección de reutilización depende de que un token revocado siga existiendo:
+si se borrara, su reaparición sería un simple `401` y no revocaría la cadena de
+sesiones. Un token revocado se purga cuando caduca, que es cuando ya no sirve de
+nada. La tarea se desactiva con `SCHEDULER_ENABLED=false`, útil para ejecutarla
+en un solo proceso si se lanzan varios workers, y los tests la dejan apagada.
+
 **Argon2id para contraseñas, SHA-256 para refresh tokens.** Argon2 es lento a
 propósito para frenar ataques de diccionario sobre secretos elegidos por
 personas. Un token aleatorio no es adivinable, y además su búsqueda en la tabla
@@ -274,13 +287,13 @@ exige un hash determinista, algo que la sal aleatoria de Argon2 impide.
 
 ## Estado y limitaciones conocidas
 
-- Los refresh tokens caducados y revocados **no se purgan**: falta una tarea
-  periódica de limpieza.
-- No hay límite de intentos en `/auth/login`, lo que deja la puerta abierta a
-  ataques de fuerza bruta.
-- Las columnas `created_at` de las tablas anteriores a `refresh_tokens` son
-  `TIMESTAMP` sin zona horaria; deberían migrarse a `TIMESTAMPTZ`.
-- No hay configuración de CORS, necesaria antes de conectar un frontend.
+- El rate limiting del login guarda el contador **en memoria**: se reinicia al
+  reiniciar la API y no se comparte entre varios procesos. Para producción con
+  varios workers haría falta un almacén compartido, como Redis.
+- Los orígenes permitidos por CORS están escritos en `app/main.py`; deberían
+  leerse de la configuración para poder cambiarlos sin tocar el código.
+- La primera ejecución de la limpieza de tokens ocurre una hora después de
+  arrancar la API, no al arrancarla.
 
 ---
 
