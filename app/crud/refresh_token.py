@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
+from typing import Any, cast
 
 from sqlalchemy import delete, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from app.core.security import (
@@ -51,7 +53,7 @@ def revoke_all_for_user(db: Session, user_id: int) -> None:
 
 def delete_expired(db: Session) -> int:
     stmt = delete(RefreshToken).where(RefreshToken.expires_at < datetime.now(UTC))
-    filas_borradas = db.execute(stmt).rowcount
+    result = cast(CursorResult[Any], db.execute(stmt))
     db.commit()
 
-    return filas_borradas
+    return result.rowcount
