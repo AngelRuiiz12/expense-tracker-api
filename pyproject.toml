@@ -8,6 +8,7 @@ authors = [{ name = "Ángel Ruiz", email = "angel.rs99@hotmail.com" }]
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.0",
+    "apscheduler>=3.10.4",
     "fastapi[standard]>=0.141.1",
     "psycopg[binary]>=3.3.5",
     "pwdlib[argon2]>=0.3.1",
@@ -17,18 +18,12 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "pytest>=9.1.1",
-    "ruff>=0.16.7",
-]
+dev = ["pytest>=9.1.1", "ruff>=0.16.7"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::UserWarning",
-]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
 
 [tool.ruff]
 target-version = "py313"
