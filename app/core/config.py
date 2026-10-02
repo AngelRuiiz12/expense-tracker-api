@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     secret_key: str
     access_token_expire_minutes: int
     refresh_token_expire_days: int
+    scheduler_enabled: bool = True
 
 
 settings = Settings()

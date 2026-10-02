@@ -67,6 +67,11 @@ def category_id(client: TestClient, auth_headers: dict[str, str]) -> int:
 
 
 @pytest.fixture(autouse=True)
+def disable_scheduler(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "scheduler_enabled", False)
+
+
+@pytest.fixture(autouse=True)
 def reset_rate_limiter():
     from app.core.rate_limiter import _rate_limit_store
 
