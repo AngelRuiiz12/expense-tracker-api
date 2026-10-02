@@ -26,6 +26,8 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://expense:expense@db:5432/expense_tracker
+    volumes:
+      - ./alembic:/app/alembic
     command: ["alembic", "upgrade", "head"]
 
   api:
